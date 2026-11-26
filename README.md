@@ -87,8 +87,7 @@ Download the latest Android APK directly from GitHub.
 4. Allow installation from this source if Android requests permission.
 5. Complete the installation and launch GhostGrid.
 
-**Direct download link:** [GhostGrid.apk](https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk)  
-**SHA-256 checksum file:** [GhostGrid.apk.sha256](https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk.sha256)
+**Direct download link:** [GhostGrid.apk](https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk)
 
 ---
 
@@ -202,9 +201,7 @@ GhostGrid uses Android permissions strictly for:
 ghost-grid-nav/
 │
 ├── APK/
-│   ├── GhostGrid.apk
-│   ├── GhostGrid.apk.sha256
-│   └── README.md
+│   └── GhostGrid.apk
 │
 ├── app/
 │   └── src/
