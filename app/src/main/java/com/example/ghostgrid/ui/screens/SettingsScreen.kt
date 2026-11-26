@@ -1,29 +1,44 @@
 package com.example.ghostgrid.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -44,12 +59,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.R
 import com.example.ghostgrid.data.GhostGridSettings
+import com.example.ghostgrid.i18n.AppLanguageOption
+import com.example.ghostgrid.i18n.LocalGhostStrings
+import com.example.ghostgrid.i18n.WorldLanguageCatalog
 import com.example.ghostgrid.ui.components.ProfileAvatar
 import com.example.ghostgrid.ui.theme.GhostAlertRed
 import com.example.ghostgrid.ui.theme.GhostBorder
@@ -67,6 +92,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private const val GHOSTGRID_APK_DIRECT_URL =
+    "https://github.com/DDharm007/GhostGrid/raw/refs/heads/main/APK/GhostGrid.apk"
+
 @Composable
 fun SettingsScreen(
     settings: GhostGridSettings,
@@ -83,11 +111,21 @@ fun SettingsScreen(
     onSyncProfileToUserServer: () -> Unit,
     onSavePlacesApiKey: (String) -> Unit,
     onSaveBingApiKey: (String) -> Unit,
+    onSelectLanguage: (String) -> Unit,
     onClearEnrichmentCache: () -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler(onBack = onBack)
 
+    val context = LocalContext.current
+    val strings = LocalGhostStrings.current
+    val allLanguages = remember { WorldLanguageCatalog.allLanguages }
+    val activeLanguage = remember(settings.appLanguageTag) {
+        WorldLanguageCatalog.resolveOption(settings.appLanguageTag)
+    }
+    val quickLanguages = remember { WorldLanguageCatalog.featuredLanguages.take(15) }
+
+    var showAllLanguagesDialog by remember { mutableStateOf(false) }
     var displayName by remember(settings.profileName) { mutableStateOf(settings.profileName) }
     var userServerUrl by remember(settings.userServerUrl) { mutableStateOf(settings.userServerUrl) }
     var apiKeyInput by remember { mutableStateOf("") }
@@ -114,7 +152,7 @@ fun SettingsScreen(
                 )
             }
             Column {
-                Text("Identity, Privacy & Settings", style = MaterialTheme.typography.titleLarge, color = GhostTextPrimary)
+                Text(strings.systemAndSettings, style = MaterialTheme.typography.titleLarge, color = GhostTextPrimary)
                 Text(stringResource(R.string.tagline), style = MaterialTheme.typography.bodySmall, color = GhostPurpleSoft)
             }
         }
@@ -125,6 +163,143 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // System Language Changer (All 180+ World Languages)
+            item {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = GhostSurfaceSolid,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, GhostBorder, RoundedCornerShape(18.dp))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Language,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                                Text(
+                                    text = strings.systemLanguageTitle,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = GhostTextPrimary
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = Color(0x1EFFFFFF)
+                            ) {
+                                Text(
+                                    text = "${activeLanguage.codeLabel} • ${allLanguages.size - 1}+",
+                                    style = TabularCoordinateMono,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = strings.systemLanguageSubtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GhostTextSecondary
+                        )
+
+                        // Active Language Display Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0x14FFFFFF))
+                                .border(0.8.dp, Color(0x28FFFFFF), RoundedCornerShape(14.dp))
+                                .clickable { showAllLanguagesDialog = true }
+                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                                .testTag("active_language_row"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = activeLanguage.nativeName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = buildString {
+                                        append(activeLanguage.englishName)
+                                        if (activeLanguage.isRtl) append(" • RTL")
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = GhostTextSecondary
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Filled.Translate,
+                                contentDescription = "Change language",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Quick Popular World Languages Row
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(quickLanguages, key = { it.tag.ifEmpty { "sys" } }) { lang ->
+                                val selected = lang.tag.equals(settings.appLanguageTag, ignoreCase = true)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (selected) Color.White else Color(0x14FFFFFF))
+                                        .border(
+                                            0.8.dp,
+                                            if (selected) Color.White else Color(0x28FFFFFF),
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .clickable { onSelectLanguage(lang.tag) }
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        .testTag("lang_quick_${lang.tag.ifEmpty { "system" }}")
+                                ) {
+                                    Text(
+                                        text = if (lang.tag.isEmpty()) "Auto" else lang.nativeName,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                        ),
+                                        color = if (selected) Color.Black else Color.White,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = { showAllLanguagesDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("open_all_languages_button")
+                        ) {
+                            Icon(Icons.Filled.Language, contentDescription = null, modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("${strings.browseAllLanguages} (${allLanguages.size - 1}+)")
+                        }
+                    }
+                }
+            }
+
             // No-Login Local Identity Card (Name + Profile Photo + User Server Sync)
             item {
                 Surface(
@@ -143,7 +318,7 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Local Profile", style = MaterialTheme.typography.titleMedium, color = GhostTextPrimary)
+                            Text(strings.localProfile, style = MaterialTheme.typography.titleMedium, color = GhostTextPrimary)
                             Surface(shape = RoundedCornerShape(999.dp), color = GhostEmeraldContainer) {
                                 Text(
                                     text = stringResource(R.string.profile_no_login_badge),
@@ -298,7 +473,7 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Strict Offline Mode", style = MaterialTheme.typography.titleSmall, color = GhostTextPrimary)
+                                Text(strings.strictOfflineMode, style = MaterialTheme.typography.titleSmall, color = GhostTextPrimary)
                                 Text(
                                     text = "Hard-blocks all outbound HTTPS calls at the OkHttp transport layer.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -316,7 +491,7 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Offline Voice Guidance (TTS)", style = MaterialTheme.typography.titleSmall, color = GhostTextPrimary)
+                                Text(strings.offlineVoiceGuidance, style = MaterialTheme.typography.titleSmall, color = GhostTextPrimary)
                                 Text(
                                     text = "Uses local on-device TextToSpeech with network synthesis disabled.",
                                     style = MaterialTheme.typography.bodySmall,
@@ -476,7 +651,250 @@ fun SettingsScreen(
                 }
             }
 
+            // Direct GhostGrid APK Download (GitHub)
+            item {
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = GhostSurfaceSolid,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, GhostBorder, RoundedCornerShape(18.dp))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Filled.Download, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Text("GhostGrid Direct APK Download", style = MaterialTheme.typography.titleSmall, color = GhostTextPrimary)
+                        }
+                        Text(
+                            text = "Download or share the latest GhostGrid.apk directly from GitHub when online.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GhostTextSecondary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse(GHOSTGRID_APK_DIRECT_URL))
+                                        )
+                                    }
+                                },
+                                enabled = !settings.strictOfflineMode,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("download_apk_github_button")
+                            ) {
+                                Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Download APK")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    runCatching {
+                                        val share = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_SUBJECT, "GhostGrid Android APK")
+                                            putExtra(
+                                                Intent.EXTRA_TEXT,
+                                                "Download GhostGrid (Zero cloud, zero tracking, pure navigation): $GHOSTGRID_APK_DIRECT_URL"
+                                            )
+                                        }
+                                        context.startActivity(Intent.createChooser(share, "Share GhostGrid APK Link"))
+                                    }
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.testTag("share_apk_link_button")
+                            ) {
+                                Icon(Icons.Filled.Share, contentDescription = "Share APK link", modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
             item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+
+    if (showAllLanguagesDialog) {
+        WorldLanguagePickerDialog(
+            languages = allLanguages,
+            selectedTag = settings.appLanguageTag,
+            searchHint = strings.searchLanguagesHint,
+            title = strings.systemLanguageTitle,
+            onSelect = { tag ->
+                onSelectLanguage(tag)
+                showAllLanguagesDialog = false
+            },
+            onDismiss = { showAllLanguagesDialog = false }
+        )
+    }
+}
+
+@Composable
+private fun WorldLanguagePickerDialog(
+    languages: List<AppLanguageOption>,
+    selectedTag: String,
+    searchHint: String,
+    title: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filtered = remember(languages, query) {
+        val q = query.trim().lowercase(Locale.ROOT)
+        if (q.isEmpty()) {
+            languages
+        } else {
+            languages.filter { opt ->
+                opt.englishName.lowercase(Locale.ROOT).contains(q) ||
+                    opt.nativeName.lowercase(Locale.ROOT).contains(q) ||
+                    opt.codeLabel.lowercase(Locale.ROOT).contains(q) ||
+                    opt.tag.lowercase(Locale.ROOT).contains(q)
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = GhostSurfaceSolid,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 28.dp)
+                .border(1.dp, Color(0x36FFFFFF), RoundedCornerShape(24.dp))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
+                        Text(
+                            text = "${filtered.size} languages",
+                            style = TabularCoordinateMono,
+                            color = GhostTextMuted
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("close_language_picker")
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = GhostTextSecondary)
+                    }
+                }
+
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text(searchHint, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = GhostTextSecondary) },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Clear", tint = GhostTextSecondary)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("language_search_input")
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 440.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(filtered, key = { it.tag.ifEmpty { "system_default" } }) { opt ->
+                        val isSelected = opt.tag.equals(selectedTag, ignoreCase = true)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isSelected) Color.White else Color(0x12FFFFFF))
+                                .border(
+                                    0.8.dp,
+                                    if (isSelected) Color.White else Color(0x22FFFFFF),
+                                    RoundedCornerShape(14.dp)
+                                )
+                                .clickable { onSelect(opt.tag) }
+                                .padding(horizontal = 14.dp, vertical = 11.dp)
+                                .testTag("lang_item_${opt.tag.ifEmpty { "system" }}"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = opt.nativeName,
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                                    ),
+                                    color = if (isSelected) Color.Black else Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = buildString {
+                                        append(opt.englishName)
+                                        if (opt.isRtl) append(" • RTL")
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isSelected) Color(0xFF3F3F46) else GhostTextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = opt.codeLabel,
+                                    style = TabularCoordinateMono,
+                                    color = if (isSelected) Color.Black else GhostTextMuted
+                                )
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = "Selected",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -15,6 +15,7 @@ import com.example.ghostgrid.data.InstalledRegionEntity
 import com.example.ghostgrid.data.RecordedTrackEntity
 import com.example.ghostgrid.data.SavedConstellationEntity
 import com.example.ghostgrid.data.SavedPlaceEntity
+import com.example.ghostgrid.data.TemperatureUnit
 import com.example.ghostgrid.downloader.BuiltInRegionPack
 import com.example.ghostgrid.downloader.PackInstallProgress
 import com.example.ghostgrid.downloader.RegionPackManager
@@ -24,6 +25,9 @@ import com.example.ghostgrid.hybrid.LiveGeoIntelBundle
 import com.example.ghostgrid.hybrid.PlacesEnrichmentService
 import com.example.ghostgrid.hybrid.PoiEnrichment
 import com.example.ghostgrid.hybrid.PublicApisClient
+import com.example.ghostgrid.hybrid.WeatherIntel
+import com.example.ghostgrid.i18n.AppLanguageApplier
+import com.example.ghostgrid.i18n.WorldLanguageCatalog
 import com.example.ghostgrid.map.GhostCameraMode
 import com.example.ghostgrid.map.GhostGridLocationTracker
 import com.example.ghostgrid.map.LocationSnapshot
@@ -102,6 +106,11 @@ data class GhostGridUiState(
     val keystoreActive: Boolean = false,
     val isSyncingProfile: Boolean = false,
     val showLayersSheet: Boolean = false,
+    val showWeatherSheet: Boolean = false,
+    // Live Weather + Forecast + Active Focus Point (updates as user moves or pans)
+    val activeFocusPoint: GeoPoint = GeoPoint(23.0225, 72.5714),
+    val liveWeather: WeatherIntel? = null,
+    val isLoadingWeather: Boolean = false,
     // Offline Tile Cache (Dark / Street / Satellite / Terrain)
     val tileCacheStats: TileCacheStats = TileCacheStats(),
     val isCachingAreaTiles: Boolean = false,
@@ -198,6 +207,11 @@ class GhostGridViewModel(application: Application) : AndroidViewModel(applicatio
 
     private var currentMapCenter: GeoPoint? = null
     private var searchJob: Job? = null
+    private var weatherJob: Job? = null
+    private var lastWeatherFetchedPoint: GeoPoint? = null
+    private var lastWeatherFetchedAtMs: Long = 0L
+    private var initialOfflineWarmStarted: Boolean = false
+    private var lastAppliedLanguageTag: String? = null
     private var lastRerouteElapsedMs: Long = 0L
 
     init {
@@ -207,11 +221,26 @@ class GhostGridViewModel(application: Application) : AndroidViewModel(applicatio
             val stats = offlineTileVault.getCacheStats()
             _uiState.update { it.copy(worldBaseFile = worldFile, keystoreActive = ksOk, tileCacheStats = stats) }
             reloadOfflineEngines()
+            val initPt = liveLocation.value.point
+            _uiState.update { it.copy(activeFocusPoint = initPt) }
+            maybeRefreshWeatherFor(initPt, minDistanceMeters = 0.0, debounceMs = 150L)
+            warmInitialOfflineTilesIfNeeded(initPt)
         }
 
         viewModelScope.launch {
             settings.collectLatest { s ->
                 voiceGuide.setEnabled(s.voiceGuidanceEnabled)
+                if (lastAppliedLanguageTag != s.appLanguageTag) {
+                    lastAppliedLanguageTag = s.appLanguageTag
+                    AppLanguageApplier.applyAppLanguage(appContext, s.appLanguageTag)
+                }
+                if (!s.strictOfflineMode) {
+                    val focus = currentMapCenter ?: liveLocation.value.point
+                    if (_uiState.value.liveWeather == null) {
+                        maybeRefreshWeatherFor(focus, minDistanceMeters = 0.0, debounceMs = 200L)
+                    }
+                    warmInitialOfflineTilesIfNeeded(focus)
+                }
             }
         }
 
@@ -220,6 +249,9 @@ class GhostGridViewModel(application: Application) : AndroidViewModel(applicatio
                 torchAndCompass.updateGeoLocationForDeclination(loc.point.lat, loc.point.lon)
                 torchAndCompass.updateGpsFallbackHeading(loc.bearing, loc.speedMps)
                 if (loc.hasGpsFix) {
+                    _uiState.update { it.copy(activeFocusPoint = loc.point) }
+                    maybeRefreshWeatherFor(loc.point, minDistanceMeters = 2_000.0, debounceMs = 500L)
+                    warmInitialOfflineTilesIfNeeded(loc.point)
                     handleLiveNavigationTick(loc.point)
                 }
             }
@@ -277,7 +309,89 @@ class GhostGridViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun setShowLayersSheet(show: Boolean) {
-        _uiState.update { it.copy(showLayersSheet = show) }
+        _uiState.update {
+            it.copy(
+                showLayersSheet = show,
+                showWeatherSheet = if (show) false else it.showWeatherSheet
+            )
+        }
+    }
+
+    fun setShowWeatherSheet(show: Boolean) {
+        _uiState.update {
+            it.copy(
+                showWeatherSheet = show,
+                showLayersSheet = if (show) false else it.showLayersSheet
+            )
+        }
+        if (show && !settings.value.strictOfflineMode) {
+            val pt = _uiState.value.activeFocusPoint
+            if (_uiState.value.liveWeather == null || (System.currentTimeMillis() - lastWeatherFetchedAtMs) > 5 * 60_000L) {
+                maybeRefreshWeatherFor(pt, minDistanceMeters = 0.0, debounceMs = 0L)
+            }
+        }
+    }
+
+    fun setTemperatureUnit(unit: TemperatureUnit) {
+        viewModelScope.launch {
+            preferences.setTemperatureUnitId(unit.id)
+        }
+    }
+
+    fun cycleTemperatureUnit() {
+        val current = TemperatureUnit.fromId(settings.value.tempUnitId)
+        setTemperatureUnit(current.next())
+    }
+
+    fun refreshLiveWeather() {
+        val pt = _uiState.value.activeFocusPoint
+        maybeRefreshWeatherFor(pt, minDistanceMeters = 0.0, debounceMs = 0L, force = true)
+    }
+
+    private fun maybeRefreshWeatherFor(
+        point: GeoPoint,
+        minDistanceMeters: Double,
+        debounceMs: Long = 600L,
+        force: Boolean = false
+    ) {
+        if (settings.value.strictOfflineMode) return
+        val prev = lastWeatherFetchedPoint
+        val now = System.currentTimeMillis()
+        if (!force && prev != null) {
+            val moved = GeoMath.haversineMeters(prev.lat, prev.lon, point.lat, point.lon)
+            val ageMs = now - lastWeatherFetchedAtMs
+            if (moved < minDistanceMeters && ageMs < 15 * 60_000L) return
+        }
+        weatherJob?.cancel()
+        weatherJob = viewModelScope.launch {
+            if (debounceMs > 0L) delay(debounceMs)
+            _uiState.update { it.copy(isLoadingWeather = true) }
+            val res = publicApis.fetchWeatherForecast(point.lat, point.lon)
+            res.onSuccess { w ->
+                lastWeatherFetchedPoint = point
+                lastWeatherFetchedAtMs = System.currentTimeMillis()
+                _uiState.update { it.copy(liveWeather = w, isLoadingWeather = false) }
+            }.onFailure {
+                _uiState.update { it.copy(isLoadingWeather = false) }
+            }
+        }
+    }
+
+    private fun warmInitialOfflineTilesIfNeeded(center: GeoPoint) {
+        if (initialOfflineWarmStarted || settings.value.strictOfflineMode) return
+        initialOfflineWarmStarted = true
+        viewModelScope.launch {
+            val stats = offlineTileVault.getCacheStats()
+            if (stats.totalTiles < 24) {
+                offlineTileVault.cacheRegionTiles(
+                    centerLat = center.lat,
+                    centerLon = center.lon,
+                    lightweight = true
+                )
+                val updated = offlineTileVault.getCacheStats()
+                _uiState.update { it.copy(tileCacheStats = updated) }
+            }
+        }
     }
 
     fun selectMapStyle(styleId: String) {
@@ -292,6 +406,8 @@ class GhostGridViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateMapCenter(point: GeoPoint) {
         currentMapCenter = point
+        _uiState.update { it.copy(activeFocusPoint = point) }
+        maybeRefreshWeatherFor(point, minDistanceMeters = 3_500.0, debounceMs = 850L)
     }
 
     fun selectCarColor(colorId: String) {
@@ -1199,6 +1315,16 @@ class GhostGridViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             preferences.setSelectedTimeZoneId(zoneId)
             showMessage("Clock set to $zoneId")
+        }
+    }
+
+    fun setAppLanguage(languageTag: String) {
+        viewModelScope.launch {
+            val option = WorldLanguageCatalog.resolveOption(languageTag)
+            preferences.setAppLanguageTag(languageTag)
+            lastAppliedLanguageTag = languageTag.trim()
+            AppLanguageApplier.applyAppLanguage(appContext, languageTag)
+            showMessage("Language: ${option.nativeName} (${option.englishName})")
         }
     }
 

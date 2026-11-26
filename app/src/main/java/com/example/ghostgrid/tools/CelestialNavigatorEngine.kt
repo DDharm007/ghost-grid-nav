@@ -48,7 +48,9 @@ data class MoonPosition(
     val cardinalDirection: String,
     val illuminationPercent: Int,
     val phaseLabel: String,
-    val isAboveHorizon: Boolean
+    val isAboveHorizon: Boolean,
+    val phaseFraction: Double = 0.0,
+    val isNorthernHemisphere: Boolean = true
 )
 
 data class ConstellationDetectionResult(
@@ -382,7 +384,9 @@ object CelestialNavigatorEngine {
             cardinalDirection = azimuthToCardinal(az.toFloat()),
             illuminationPercent = illumination,
             phaseLabel = phaseName,
-            isAboveHorizon = alt > 0.0
+            isAboveHorizon = alt > 0.0,
+            phaseFraction = phaseFrac,
+            isNorthernHemisphere = latDeg >= 0.0
         )
     }
 

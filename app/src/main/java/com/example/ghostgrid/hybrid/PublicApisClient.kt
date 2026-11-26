@@ -23,6 +23,24 @@ import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
+data class HourlyForecastPoint(
+    val timeLabel: String,
+    val temperatureC: Double,
+    val weatherCode: Int,
+    val precipProbPct: Int,
+    val isDay: Boolean
+)
+
+data class DailyForecastPoint(
+    val dateIso: String,
+    val dayLabel: String,
+    val weatherCode: Int,
+    val weatherLabel: String,
+    val tempMaxC: Double,
+    val tempMinC: Double,
+    val precipProbMaxPct: Int
+)
+
 data class WeatherIntel(
     val temperatureC: Double,
     val apparentTempC: Double,
@@ -30,6 +48,7 @@ data class WeatherIntel(
     val windSpeedKmh: Double,
     val windDirectionDeg: Int,
     val pressureHpa: Double,
+    val weatherCode: Int = 0,
     val weatherLabel: String,
     val isDay: Boolean,
     val uvIndexMax: Double,
@@ -39,7 +58,12 @@ data class WeatherIntel(
     val sunsetLocal: String,
     val usAqi: Int?,
     val pm25: Double?,
-    val elevationMeters: Double?
+    val elevationMeters: Double?,
+    val locationLat: Double = 0.0,
+    val locationLon: Double = 0.0,
+    val hourlyForecast: List<HourlyForecastPoint> = emptyList(),
+    val dailyForecast: List<DailyForecastPoint> = emptyList(),
+    val fetchedAtMs: Long = System.currentTimeMillis()
 )
 
 data class EarthquakeEvent(
@@ -716,36 +740,119 @@ class PublicApisClient(
         }
     }
 
-    private fun fetchOpenMeteoWeather(lat: Double, lon: Double): Result<WeatherIntel> = runCatching {
+    suspend fun fetchWeatherForecast(lat: Double, lon: Double): Result<WeatherIntel> = withContext(Dispatchers.IO) {
+        fetchOpenMeteoWeather(lat, lon, includeAqi = false)
+    }
+
+    private fun fetchOpenMeteoWeather(
+        lat: Double,
+        lon: Double,
+        includeAqi: Boolean = true
+    ): Result<WeatherIntel> = runCatching {
         val weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
             "&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m" +
-            "&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=1"
+            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max" +
+            "&timezone=auto&forecast_days=6"
         val wJson = httpClient.newCall(Request.Builder().url(weatherUrl).get().build()).execute().use { resp ->
             if (!resp.isSuccessful) error("Open-Meteo HTTP ${resp.code}")
             JSONObject(resp.body?.string().orEmpty())
         }
         val cur = wJson.getJSONObject("current")
+        val currentTimeIso = cur.optString("time", "")
+        val hourly = wJson.optJSONObject("hourly")
         val daily = wJson.optJSONObject("daily")
         val elev = wJson.optDouble("elevation", Double.NaN).takeUnless { it.isNaN() }
 
         // Optional AQI call (Open-Meteo Air Quality API)
         var usAqi: Int? = null
         var pm25: Double? = null
-        runCatching {
-            val aqiUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm2_5"
-            httpClient.newCall(Request.Builder().url(aqiUrl).get().build()).execute().use { resp ->
-                if (resp.isSuccessful) {
-                    val aCur = JSONObject(resp.body?.string().orEmpty()).optJSONObject("current")
-                    if (aCur != null) {
-                        if (!aCur.isNull("us_aqi")) usAqi = aCur.optInt("us_aqi")
-                        if (!aCur.isNull("pm2_5")) pm25 = aCur.optDouble("pm2_5")
+        if (includeAqi) {
+            runCatching {
+                val aqiUrl = "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=us_aqi,pm2_5"
+                httpClient.newCall(Request.Builder().url(aqiUrl).get().build()).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val aCur = JSONObject(resp.body?.string().orEmpty()).optJSONObject("current")
+                        if (aCur != null) {
+                            if (!aCur.isNull("us_aqi")) usAqi = aCur.optInt("us_aqi")
+                            if (!aCur.isNull("pm2_5")) pm25 = aCur.optDouble("pm2_5")
+                        }
                     }
+                }
+            }
+        }
+
+        // Parse next 12 hourly forecast slots starting from current local hour
+        val hourlyList = mutableListOf<HourlyForecastPoint>()
+        if (hourly != null) {
+            val hTimes = hourly.optJSONArray("time")
+            val hTemps = hourly.optJSONArray("temperature_2m")
+            val hCodes = hourly.optJSONArray("weather_code")
+            val hPops = hourly.optJSONArray("precipitation_probability")
+            val hDays = hourly.optJSONArray("is_day")
+            if (hTimes != null && hTemps != null) {
+                val curHourPrefix = currentTimeIso.take(13) // YYYY-MM-DDTHH
+                var startIdx = 0
+                for (i in 0 until hTimes.length()) {
+                    if (hTimes.optString(i).startsWith(curHourPrefix)) {
+                        startIdx = i
+                        break
+                    }
+                }
+                val endIdx = (startIdx + 14).coerceAtMost(hTimes.length())
+                for (i in startIdx until endIdx) {
+                    val iso = hTimes.optString(i)
+                    val hh = iso.substringAfter("T", iso).take(5)
+                    hourlyList.add(
+                        HourlyForecastPoint(
+                            timeLabel = if (i == startIdx) "Now" else hh,
+                            temperatureC = hTemps.optDouble(i, 0.0),
+                            weatherCode = hCodes?.optInt(i, 0) ?: 0,
+                            precipProbPct = hPops?.optInt(i, 0) ?: 0,
+                            isDay = (hDays?.optInt(i, 1) ?: 1) == 1
+                        )
+                    )
+                }
+            }
+        }
+
+        // Parse 6-day forecast
+        val dailyList = mutableListOf<DailyForecastPoint>()
+        if (daily != null) {
+            val dTimes = daily.optJSONArray("time")
+            val dCodes = daily.optJSONArray("weather_code")
+            val dMax = daily.optJSONArray("temperature_2m_max")
+            val dMin = daily.optJSONArray("temperature_2m_min")
+            val dPop = daily.optJSONArray("precipitation_probability_max")
+            val dayFmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val labelFmt = java.text.SimpleDateFormat("EEE", java.util.Locale.US)
+            if (dTimes != null && dMax != null && dMin != null) {
+                for (i in 0 until dTimes.length().coerceAtMost(6)) {
+                    val iso = dTimes.optString(i)
+                    val dayName = if (i == 0) {
+                        "Today"
+                    } else {
+                        runCatching { dayFmt.parse(iso)?.let { labelFmt.format(it) } }.getOrNull() ?: iso.takeLast(5)
+                    }
+                    val code = dCodes?.optInt(i, 0) ?: 0
+                    dailyList.add(
+                        DailyForecastPoint(
+                            dateIso = iso,
+                            dayLabel = dayName,
+                            weatherCode = code,
+                            weatherLabel = wmoCodeToLabel(code),
+                            tempMaxC = dMax.optDouble(i, 0.0),
+                            tempMinC = dMin.optDouble(i, 0.0),
+                            precipProbMaxPct = dPop?.optInt(i, 0) ?: 0
+                        )
+                    )
                 }
             }
         }
 
         val sunriseRaw = daily?.optJSONArray("sunrise")?.optString(0).orEmpty()
         val sunsetRaw = daily?.optJSONArray("sunset")?.optString(0).orEmpty()
+        val curCode = cur.optInt("weather_code", 0)
 
         WeatherIntel(
             temperatureC = cur.optDouble("temperature_2m", 0.0),
@@ -754,7 +861,8 @@ class PublicApisClient(
             windSpeedKmh = cur.optDouble("wind_speed_10m", 0.0),
             windDirectionDeg = cur.optInt("wind_direction_10m", 0),
             pressureHpa = cur.optDouble("surface_pressure", 1013.0),
-            weatherLabel = wmoCodeToLabel(cur.optInt("weather_code", 0)),
+            weatherCode = curCode,
+            weatherLabel = wmoCodeToLabel(curCode),
             isDay = cur.optInt("is_day", 1) == 1,
             uvIndexMax = daily?.optJSONArray("uv_index_max")?.optDouble(0, 0.0) ?: 0.0,
             tempMaxC = daily?.optJSONArray("temperature_2m_max")?.optDouble(0, 0.0) ?: 0.0,
@@ -763,7 +871,12 @@ class PublicApisClient(
             sunsetLocal = sunsetRaw.substringAfter("T", sunsetRaw),
             usAqi = usAqi,
             pm25 = pm25,
-            elevationMeters = elev
+            elevationMeters = elev,
+            locationLat = lat,
+            locationLon = lon,
+            hourlyForecast = hourlyList,
+            dailyForecast = dailyList,
+            fetchedAtMs = System.currentTimeMillis()
         )
     }
 

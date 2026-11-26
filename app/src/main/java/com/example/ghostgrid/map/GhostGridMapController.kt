@@ -195,6 +195,8 @@ class GhostGridMapController(
         loadMapStyle(initialStyle, strictOfflineMode, forceReload = true, onReady = onStyleReady)
     }
 
+    private var styleReloadSeq: Int = 0
+
     fun loadMapStyle(
         requestedStyle: GhostMapStyle,
         strictOfflineMode: Boolean,
@@ -212,59 +214,44 @@ class GhostGridMapController(
             return
         }
         currentLoadedStyleKey = styleKey
+        styleReloadSeq++
         mountedRegionIds.clear()
 
-        val builder = if (effectiveOffline) {
-            val bgHex = offlineBackgroundHex(requestedStyle)
-            Style.Builder().fromJson(buildPureLocalOfflineStyleJson(bgHex, requestedStyle))
+        // Cache-busting query suffix ensures MapLibre refreshes upscaled offline fallback tiles
+        // immediately when toggling Online <-> Offline or after downloading a new region pack.
+        val qTag = "?m=${if (effectiveOffline) "off" else "on"}&v=$styleReloadSeq"
+        val effectiveRasterStyle = when {
+            requestedStyle == GhostMapStyle.OPENFREEMAP_3D && effectiveOffline -> GhostMapStyle.STEALTH_DARK
+            requestedStyle == GhostMapStyle.PURE_OFFLINE -> GhostMapStyle.STEALTH_DARK
+            else -> requestedStyle
+        }
+
+        val builder = if (!effectiveOffline && requestedStyle == GhostMapStyle.OPENFREEMAP_3D) {
+            Style.Builder().fromUri("https://tiles.openfreemap.org/styles/liberty")
         } else {
-            when (requestedStyle) {
-                GhostMapStyle.STEALTH_DARK -> Style.Builder().fromJson(
-                    buildLayeredRasterStyleJson(
-                        bgHex = "#0B0B0D",
-                        baseTileUrl = OfflineTileVault.baseUrlTemplateFor(GhostMapStyle.STEALTH_DARK)!!,
-                        baseMaxZoom = 16,
-                        overlayTileUrl = OfflineTileVault.overlayUrlTemplateFor(GhostMapStyle.STEALTH_DARK),
-                        overlayMaxZoom = 16
-                    )
+            val baseTemplate = OfflineTileVault.baseUrlTemplateFor(effectiveRasterStyle)
+                ?: OfflineTileVault.baseUrlTemplateFor(GhostMapStyle.STEALTH_DARK)!!
+            val overlayTemplate = OfflineTileVault.overlayUrlTemplateFor(effectiveRasterStyle)
+            val maxZ = if (effectiveRasterStyle == GhostMapStyle.STEALTH_DARK) 16 else 18
+            Style.Builder().fromJson(
+                buildLayeredRasterStyleJson(
+                    bgHex = offlineBackgroundHex(effectiveRasterStyle),
+                    baseTileUrl = "$baseTemplate$qTag",
+                    baseMaxZoom = maxZ,
+                    overlayTileUrl = overlayTemplate?.let { "$it$qTag" },
+                    overlayMaxZoom = maxZ
                 )
-                GhostMapStyle.STANDARD_MAP -> Style.Builder().fromJson(
-                    buildLayeredRasterStyleJson(
-                        bgHex = "#141416",
-                        baseTileUrl = OfflineTileVault.baseUrlTemplateFor(GhostMapStyle.STANDARD_MAP)!!,
-                        baseMaxZoom = 18
-                    )
-                )
-                GhostMapStyle.SATELLITE -> Style.Builder().fromJson(
-                    buildLayeredRasterStyleJson(
-                        bgHex = "#080A0C",
-                        baseTileUrl = OfflineTileVault.baseUrlTemplateFor(GhostMapStyle.SATELLITE)!!,
-                        baseMaxZoom = 18,
-                        overlayTileUrl = OfflineTileVault.overlayUrlTemplateFor(GhostMapStyle.SATELLITE),
-                        overlayMaxZoom = 18
-                    )
-                )
-                GhostMapStyle.TERRAIN -> Style.Builder().fromJson(
-                    buildLayeredRasterStyleJson(
-                        bgHex = "#121412",
-                        baseTileUrl = OfflineTileVault.baseUrlTemplateFor(GhostMapStyle.TERRAIN)!!,
-                        baseMaxZoom = 18
-                    )
-                )
-                GhostMapStyle.OPENFREEMAP_3D -> Style.Builder().fromUri("https://tiles.openfreemap.org/styles/liberty")
-                GhostMapStyle.PURE_OFFLINE -> Style.Builder().fromJson(
-                    buildPureLocalOfflineStyleJson("#08080A", GhostMapStyle.PURE_OFFLINE)
-                )
-            }
+            )
         }
 
         m.setStyle(builder) { style ->
             activeStyle = style
             registerCustomBitmaps(style)
-            if (effectiveOffline) {
+            if (requestedStyle == GhostMapStyle.PURE_OFFLINE) {
                 mountProgrammaticOfflineWorld(style, requestedStyle)
+            }
+            if (effectiveOffline) {
                 mountWorldBasePmtiles(style, worldBaseFile)
-                mountLocalCachedRasterTiles(style, requestedStyle)
             }
             mountOverlaySourcesAndLayers(style)
             mountAllRegionalPmtiles(style)
@@ -283,59 +270,8 @@ class GhostGridMapController(
         GhostMapStyle.STEALTH_DARK, GhostMapStyle.OPENFREEMAP_3D, GhostMapStyle.PURE_OFFLINE -> "#09090B"
     }
 
-    private fun buildPureLocalOfflineStyleJson(bgHex: String, requestedStyle: GhostMapStyle): String {
-        return """
-            {
-              "version": 8,
-              "name": "GhostGrid Offline ${requestedStyle.label}",
-              "sources": {},
-              "layers": [
-                {
-                  "id": "bg",
-                  "type": "background",
-                  "paint": { "background-color": "$bgHex" }
-                }
-              ]
-            }
-        """.trimIndent()
-    }
-
-    private fun mountLocalCachedRasterTiles(style: Style, requestedStyle: GhostMapStyle) {
-        val tileStyle = when (requestedStyle) {
-            GhostMapStyle.OPENFREEMAP_3D -> GhostMapStyle.STEALTH_DARK
-            GhostMapStyle.PURE_OFFLINE -> return
-            else -> requestedStyle
-        }
-        if (!offlineTileVault.hasCachedTiles(tileStyle)) return
-
-        val baseUri = offlineTileVault.localBaseTileUriTemplate(tileStyle)
-        val tileSet = org.maplibre.android.style.sources.TileSet("2.2.0", baseUri).apply {
-            minZoom = 1f
-            maxZoom = 13f
-        }
-        style.addSource(org.maplibre.android.style.sources.RasterSource(SOURCE_OFFLINE_RASTER_BASE, tileSet, 256))
-        style.addLayer(
-            org.maplibre.android.style.layers.RasterLayer("offline-raster-base-layer", SOURCE_OFFLINE_RASTER_BASE).apply {
-                setMinZoom(0f)
-                setMaxZoom(22f)
-            }
-        )
-
-        val overlayUri = offlineTileVault.localOverlayTileUriTemplate(tileStyle)
-        if (overlayUri != null) {
-            val overlaySet = org.maplibre.android.style.sources.TileSet("2.2.0", overlayUri).apply {
-                minZoom = 8f
-                maxZoom = 13f
-            }
-            style.addSource(org.maplibre.android.style.sources.RasterSource(SOURCE_OFFLINE_RASTER_OVERLAY, overlaySet, 256))
-            style.addLayer(
-                org.maplibre.android.style.layers.RasterLayer("offline-raster-overlay-layer", SOURCE_OFFLINE_RASTER_OVERLAY).apply {
-                    setMinZoom(8f)
-                    setMaxZoom(22f)
-                }
-            )
-        }
-    }
+    // Offline tiles are served transparently through OfflineTileVault.MapLibreTileInterceptor
+    // registered with HttpRequestUtil.setOkHttpClient(...) in MainActivity.onCreate().
 
     private fun buildLayeredRasterStyleJson(
         bgHex: String,

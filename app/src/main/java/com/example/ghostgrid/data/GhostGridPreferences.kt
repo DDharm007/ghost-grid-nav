@@ -17,6 +17,38 @@ private val Context.ghostGridDataStore: DataStore<Preferences> by preferencesDat
     name = "ghostgrid_settings"
 )
 
+enum class TemperatureUnit(val id: String, val symbol: String, val label: String) {
+    CELSIUS("C", "°C", "Celsius"),
+    FAHRENHEIT("F", "°F", "Fahrenheit"),
+    KELVIN("K", "K", "Kelvin");
+
+    fun convertFromCelsius(tempC: Double): Double = when (this) {
+        CELSIUS -> tempC
+        FAHRENHEIT -> (tempC * 9.0 / 5.0) + 32.0
+        KELVIN -> tempC + 273.15
+    }
+
+    fun format(tempC: Double, decimals: Int = 0): String {
+        val v = convertFromCelsius(tempC)
+        val num = if (decimals <= 0) {
+            kotlin.math.round(v).toInt().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.${decimals}f", v)
+        }
+        return "$num$symbol"
+    }
+
+    fun next(): TemperatureUnit = when (this) {
+        CELSIUS -> FAHRENHEIT
+        FAHRENHEIT -> KELVIN
+        KELVIN -> CELSIUS
+    }
+
+    companion object {
+        fun fromId(id: String): TemperatureUnit = entries.firstOrNull { it.id == id } ?: CELSIUS
+    }
+}
+
 data class GhostGridSettings(
     val strictOfflineMode: Boolean = false,
     val mapStyleId: String = "stealth_dark",
@@ -33,7 +65,9 @@ data class GhostGridSettings(
     val lastProfileSyncedAt: Long = 0L,
     val medicalBloodType: String = "",
     val medicalAllergies: String = "",
-    val selectedTimeZoneId: String = ""
+    val selectedTimeZoneId: String = "",
+    val tempUnitId: String = "C",
+    val appLanguageTag: String = ""
 )
 
 class GhostGridPreferences(private val context: Context) {
@@ -57,6 +91,8 @@ class GhostGridPreferences(private val context: Context) {
         private val KEY_BLOOD_TYPE = stringPreferencesKey("medical_blood_type")
         private val KEY_ALLERGIES = stringPreferencesKey("medical_allergies")
         private val KEY_SELECTED_TIMEZONE = stringPreferencesKey("selected_timezone_id")
+        private val KEY_TEMP_UNIT = stringPreferencesKey("temperature_unit_id")
+        private val KEY_APP_LANGUAGE = stringPreferencesKey("app_language_tag")
     }
 
     val settingsFlow: Flow<GhostGridSettings> = context.ghostGridDataStore.data.map { prefs ->
@@ -76,7 +112,9 @@ class GhostGridPreferences(private val context: Context) {
             lastProfileSyncedAt = prefs[KEY_LAST_PROFILE_SYNC] ?: 0L,
             medicalBloodType = prefs[KEY_BLOOD_TYPE] ?: "",
             medicalAllergies = prefs[KEY_ALLERGIES] ?: "",
-            selectedTimeZoneId = prefs[KEY_SELECTED_TIMEZONE] ?: ""
+            selectedTimeZoneId = prefs[KEY_SELECTED_TIMEZONE] ?: "",
+            tempUnitId = prefs[KEY_TEMP_UNIT] ?: "C",
+            appLanguageTag = prefs[KEY_APP_LANGUAGE] ?: ""
         )
     }
 
@@ -155,5 +193,13 @@ class GhostGridPreferences(private val context: Context) {
 
     suspend fun setSelectedTimeZoneId(zoneId: String) {
         context.ghostGridDataStore.edit { it[KEY_SELECTED_TIMEZONE] = zoneId.trim() }
+    }
+
+    suspend fun setTemperatureUnitId(unitId: String) {
+        context.ghostGridDataStore.edit { it[KEY_TEMP_UNIT] = unitId.trim() }
+    }
+
+    suspend fun setAppLanguageTag(languageTag: String) {
+        context.ghostGridDataStore.edit { it[KEY_APP_LANGUAGE] = languageTag.trim() }
     }
 }

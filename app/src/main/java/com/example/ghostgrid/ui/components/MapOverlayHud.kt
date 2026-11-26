@@ -81,6 +81,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.ghostgrid.data.GhostGridSettings
+import com.example.ghostgrid.i18n.GhostStrings
+import com.example.ghostgrid.i18n.LocalGhostStrings
 import com.example.ghostgrid.map.CarColorPreset
 import com.example.ghostgrid.map.GhostCameraMode
 import com.example.ghostgrid.map.GhostMapStyle
@@ -145,6 +147,7 @@ fun TopSearchAndPrivacyHud(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val strings = LocalGhostStrings.current
 
     Column(
         modifier = modifier
@@ -180,7 +183,7 @@ fun TopSearchAndPrivacyHud(
                 Box(modifier = Modifier.weight(1f)) {
                     if (query.isEmpty()) {
                         Text(
-                            text = "Search places",
+                            text = strings.searchPlaces,
                             style = MaterialTheme.typography.bodyLarge,
                             color = GhostTextMuted,
                             maxLines = 1
@@ -289,7 +292,7 @@ fun TopSearchAndPrivacyHud(
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
-                            text = shortCategoryLabel(category),
+                            text = shortCategoryLabel(category, strings),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
                             color = if (selected) GhostOnAccent else GhostTextPrimary
                         )
@@ -507,6 +510,7 @@ fun TurnByTurnNavigationBanner(
     onStopNavigation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalGhostStrings.current
     val route = navHud.activeRoute ?: return
     val maneuver = route.maneuvers.getOrNull(navHud.currentManeuverIndex) ?: route.maneuvers.firstOrNull()
 
@@ -620,7 +624,7 @@ fun TurnByTurnNavigationBanner(
                                     tint = GhostAlertRed,
                                     modifier = Modifier.size(15.dp)
                                 )
-                                Text("Blocked", style = MaterialTheme.typography.labelMedium, color = GhostAlertRed)
+                                Text(strings.blockedLabel, style = MaterialTheme.typography.labelMedium, color = GhostAlertRed)
                             }
                         }
 
@@ -633,7 +637,7 @@ fun TurnByTurnNavigationBanner(
                                 .testTag("end_navigation_button")
                         ) {
                             Text(
-                                text = "End",
+                                text = strings.endLabel,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Color.Black
                             )
@@ -825,6 +829,7 @@ fun BottomCommandDock(
     onOpenScreen: (GhostScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalGhostStrings.current
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -844,23 +849,23 @@ fun BottomCommandDock(
         ) {
             BottomNavTab(
                 icon = Icons.Filled.Explore,
-                label = "Explore",
+                label = strings.navExplore,
                 selected = activeScreen == GhostScreen.MAP,
-                contentDescription = "Explore map",
+                contentDescription = strings.navExplore,
                 onClick = { onOpenScreen(GhostScreen.MAP) },
                 testTag = "dock_explore"
             )
             BottomNavTab(
                 icon = Icons.Filled.AutoAwesome,
-                label = "Sky",
+                label = strings.navSky,
                 selected = activeScreen == GhostScreen.CONSTELLATIONS,
-                contentDescription = "Constellation Detector",
+                contentDescription = strings.navSky,
                 onClick = { onOpenScreen(GhostScreen.CONSTELLATIONS) },
                 testTag = "dock_constellations"
             )
             BottomNavTab(
                 icon = Icons.Filled.Bookmark,
-                label = "Saved",
+                label = strings.navSaved,
                 selected = activeScreen == GhostScreen.SAVED_PLACES,
                 contentDescription = stringResource(R.string.cd_saved_lists),
                 onClick = { onOpenScreen(GhostScreen.SAVED_PLACES) },
@@ -868,7 +873,7 @@ fun BottomCommandDock(
             )
             BottomNavTab(
                 icon = Icons.Filled.Map,
-                label = "Maps",
+                label = strings.navMaps,
                 selected = activeScreen == GhostScreen.REGIONS,
                 contentDescription = stringResource(R.string.cd_region_manager),
                 onClick = { onOpenScreen(GhostScreen.REGIONS) },
@@ -876,7 +881,7 @@ fun BottomCommandDock(
             )
             BottomNavTab(
                 icon = Icons.Filled.Build,
-                label = "Tools",
+                label = strings.navTools,
                 selected = activeScreen == GhostScreen.TOOLKIT,
                 contentDescription = stringResource(R.string.cd_toolkit),
                 onClick = { onOpenScreen(GhostScreen.TOOLKIT) },
@@ -884,7 +889,7 @@ fun BottomCommandDock(
             )
             BottomNavTab(
                 icon = Icons.Filled.Lock,
-                label = "Vault",
+                label = strings.navVault,
                 selected = activeScreen == GhostScreen.VAULT,
                 contentDescription = stringResource(R.string.cd_route_vault),
                 onClick = { onOpenScreen(GhostScreen.VAULT) },
@@ -958,6 +963,7 @@ fun MapLayersAndVehicleSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = LocalGhostStrings.current
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -979,7 +985,7 @@ fun MapLayersAndVehicleSheet(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("Map & Vehicle", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text(strings.mapAndVehicle, style = MaterialTheme.typography.titleMedium, color = Color.White)
                     Text(
                         text = if (strictOfflineMode) {
                             "Offline mode • ${tileCacheStats.totalTiles} cached tiles ready"
@@ -1062,7 +1068,7 @@ fun MapLayersAndVehicleSheet(
                             text = if (strictOfflineMode) {
                                 "Disable offline lock briefly to save new area tiles"
                             } else {
-                                "Save Current Area Offline (Dark, Map, Satellite, Terrain)"
+                                strings.saveAreaOffline
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = if (strictOfflineMode) GhostTextMuted else Color.White
@@ -1147,13 +1153,13 @@ fun MapLayersAndVehicleSheet(
     }
 }
 
-private fun shortCategoryLabel(category: AmenityCategory): String = when (category) {
-    AmenityCategory.FOOD -> "Food"
-    AmenityCategory.HOSPITAL -> "Hospitals"
-    AmenityCategory.PHARMACY -> "Pharmacy"
-    AmenityCategory.FUEL -> "Fuel"
-    AmenityCategory.TRANSIT -> "Transit"
-    AmenityCategory.SAVED -> "Saved"
+private fun shortCategoryLabel(category: AmenityCategory, strings: GhostStrings): String = when (category) {
+    AmenityCategory.FOOD -> strings.catFood
+    AmenityCategory.HOSPITAL -> strings.catHospitals
+    AmenityCategory.PHARMACY -> strings.catPharmacy
+    AmenityCategory.FUEL -> strings.catFuel
+    AmenityCategory.TRANSIT -> strings.catTransit
+    AmenityCategory.SAVED -> strings.catSaved
 }
 
 private fun categoryIcon(category: AmenityCategory): ImageVector = when (category) {

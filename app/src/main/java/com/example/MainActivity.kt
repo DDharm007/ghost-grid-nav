@@ -20,6 +20,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.fragment.app.FragmentActivity
@@ -35,6 +37,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ghostgrid.data.TemperatureUnit
+import com.example.ghostgrid.i18n.GhostStrings
+import com.example.ghostgrid.i18n.LocalGhostStrings
+import com.example.ghostgrid.i18n.WorldLanguageCatalog
 import com.example.ghostgrid.map.CarColorPreset
 import com.example.ghostgrid.map.GhostCameraMode
 import com.example.ghostgrid.map.GhostGridMapController
@@ -46,10 +52,11 @@ import com.example.ghostgrid.ui.GhostScreen
 import com.example.ghostgrid.ui.components.BottomCommandDock
 import com.example.ghostgrid.ui.components.MapLayersAndVehicleSheet
 import com.example.ghostgrid.ui.components.MapTacticalActionColumn
-import com.example.ghostgrid.ui.components.MapWorldClockPill
+import com.example.ghostgrid.ui.components.MapWeatherMoonAndTimeHud
 import com.example.ghostgrid.ui.components.PlaceDetailSheet
 import com.example.ghostgrid.ui.components.TopSearchAndPrivacyHud
 import com.example.ghostgrid.ui.components.TurnByTurnNavigationBanner
+import com.example.ghostgrid.ui.components.WeatherForecastSheet
 import com.example.ghostgrid.ui.screens.ConstellationDetectorScreen
 import com.example.ghostgrid.ui.screens.RegionManagerScreen
 import com.example.ghostgrid.ui.screens.RouteVaultScreen
@@ -62,6 +69,7 @@ import com.example.ghostgrid.ui.theme.GhostSurfaceSolid
 import com.example.ghostgrid.ui.theme.GhostTextPrimary
 import org.maplibre.android.MapLibre
 import org.maplibre.android.maps.MapView
+import org.maplibre.android.module.http.HttpRequestUtil
 
 class MainActivity : FragmentActivity() {
 
@@ -71,6 +79,7 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         MapLibre.getInstance(applicationContext)
+        HttpRequestUtil.setOkHttpClient(viewModel.offlineTileVault.createMapLibreHttpClient())
 
         setContent {
             GhostGridTheme {
@@ -130,6 +139,11 @@ private fun GhostGridRoot(
 
     val activeStyle = remember(settings.mapStyleId) { GhostMapStyle.fromId(settings.mapStyleId) }
     val activeCarColor = remember(settings.carColorId) { CarColorPreset.fromId(settings.carColorId) }
+    val activeTempUnit = remember(settings.tempUnitId) { TemperatureUnit.fromId(settings.tempUnitId) }
+    val activeStrings = remember(settings.appLanguageTag) { GhostStrings.forLanguageTag(settings.appLanguageTag) }
+    val activeLayoutDirection = remember(settings.appLanguageTag) {
+        WorldLanguageCatalog.layoutDirectionFor(settings.appLanguageTag)
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -216,6 +230,10 @@ private fun GhostGridRoot(
         mapController.updatePlaceMarkers(uiState.searchResults, uiState.selectedPlace)
     }
 
+    CompositionLocalProvider(
+        LocalGhostStrings provides activeStrings,
+        LocalLayoutDirection provides activeLayoutDirection
+    ) {
     Scaffold(
         containerColor = GhostCanvas,
         snackbarHost = {
@@ -242,13 +260,14 @@ private fun GhostGridRoot(
                 strictOfflineMode = settings.strictOfflineMode,
                 onMapTapped = { pt ->
                     viewModel.setShowLayersSheet(false)
+                    viewModel.setShowWeatherSheet(false)
                     viewModel.onMapTapped(pt)
                 },
                 onCameraIdle = { center ->
                     viewModel.updateMapCenter(center)
                 },
                 onStyleReady = {
-                    val startZoom = if (settings.strictOfflineMode && uiState.tileCacheStats.totalTiles == 0) 3.4 else 14.5
+                    val startZoom = if (settings.strictOfflineMode && uiState.tileCacheStats.totalTiles < 20) 5.2 else 14.5
                     mapController.animateTo(location.point, zoom = startZoom, tilt = 18.0)
                     mapController.updateUserVehicleMarker(
                         snapshot = location,
@@ -296,11 +315,18 @@ private fun GhostGridRoot(
                     )
                 }
 
-                if (uiState.selectedPlace == null && !uiState.showLayersSheet) {
+                if (uiState.selectedPlace == null && !uiState.showLayersSheet && !uiState.showWeatherSheet) {
                     if (!uiState.navHud.isNavigating) {
-                        MapWorldClockPill(
+                        MapWeatherMoonAndTimeHud(
+                            focusPoint = uiState.activeFocusPoint,
+                            weather = uiState.liveWeather,
+                            isLoadingWeather = uiState.isLoadingWeather,
+                            tempUnit = activeTempUnit,
                             selectedTimeZoneId = settings.selectedTimeZoneId,
-                            onClick = { viewModel.navigateTo(GhostScreen.TOOLKIT) },
+                            strictOfflineMode = settings.strictOfflineMode,
+                            onCycleTempUnit = { viewModel.cycleTemperatureUnit() },
+                            onOpenWeatherSheet = { viewModel.setShowWeatherSheet(true) },
+                            onOpenTimeTool = { viewModel.navigateTo(GhostScreen.TOOLKIT) },
                             modifier = Modifier.align(Alignment.BottomStart)
                         )
                     }
@@ -311,7 +337,7 @@ private fun GhostGridRoot(
                         location = location,
                         onCycleCameraMode = { viewModel.cycleCameraMode() },
                         onRecenter = {
-                            val targetZoom = if (settings.strictOfflineMode && installedRegions.isEmpty() && uiState.tileCacheStats.totalTiles == 0) 4.0 else 15.8
+                            val targetZoom = if (settings.strictOfflineMode && installedRegions.isEmpty() && uiState.tileCacheStats.totalTiles < 20) 5.5 else 15.8
                             mapController.animateTo(
                                 location.point,
                                 zoom = targetZoom,
@@ -336,6 +362,20 @@ private fun GhostGridRoot(
 
                 val selected = uiState.selectedPlace
                 when {
+                    uiState.showWeatherSheet -> {
+                        WeatherForecastSheet(
+                            focusPoint = uiState.activeFocusPoint,
+                            weather = uiState.liveWeather,
+                            isLoadingWeather = uiState.isLoadingWeather,
+                            tempUnit = activeTempUnit,
+                            strictOfflineMode = settings.strictOfflineMode,
+                            onSelectTempUnit = { unit -> viewModel.setTemperatureUnit(unit) },
+                            onRefreshWeather = { viewModel.refreshLiveWeather() },
+                            onDismiss = { viewModel.setShowWeatherSheet(false) },
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
+                    }
+
                     uiState.showLayersSheet -> {
                         MapLayersAndVehicleSheet(
                             currentStyle = activeStyle,
@@ -347,7 +387,7 @@ private fun GhostGridRoot(
                             alwaysShow3dCar = settings.alwaysShow3dCar,
                             onSelectStyle = { style ->
                                 viewModel.selectMapStyle(style.id)
-                                val zoom = if (style == GhostMapStyle.PURE_OFFLINE && installedRegions.isEmpty()) 3.4 else 14.2
+                                val zoom = if (style == GhostMapStyle.PURE_OFFLINE && installedRegions.isEmpty() && uiState.tileCacheStats.totalTiles < 20) 5.2 else 14.2
                                 mapController.animateTo(
                                     location.point,
                                     zoom = zoom,
@@ -530,6 +570,7 @@ private fun GhostGridRoot(
                     onSyncProfileToUserServer = { viewModel.syncProfileToUserServer() },
                     onSavePlacesApiKey = { viewModel.savePlacesApiKey(it) },
                     onSaveBingApiKey = { viewModel.saveBingApiKey(it) },
+                    onSelectLanguage = { viewModel.setAppLanguage(it) },
                     onClearEnrichmentCache = { viewModel.clearEnrichmentCache() },
                     onBack = { viewModel.navigateBackToMap() }
                 )
@@ -537,6 +578,7 @@ private fun GhostGridRoot(
                 GhostScreen.MAP -> Unit
             }
         }
+    }
     }
 }
 
