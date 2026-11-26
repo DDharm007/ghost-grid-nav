@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/DDharm007/GhostGrid/raw/refs/heads/main/APK/GhostGrid.apk">
+  <a href="https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk">
     <img src="https://img.shields.io/badge/⬇_DOWNLOAD_GHOSTGRID-ANDROID_APK-black?style=for-the-badge&logo=android" alt="Download GhostGrid APK" />
   </a>
 </p>
@@ -74,7 +74,7 @@ Every map tile, waypoint, and bearing stays yours.
 Download the latest Android APK directly from GitHub.
 
 <p align="center">
-  <a href="https://github.com/DDharm007/GhostGrid/raw/refs/heads/main/APK/GhostGrid.apk">
+  <a href="https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk">
     <img src="https://img.shields.io/badge/DOWNLOAD-GHOSTGRID.APK-black?style=for-the-badge&logo=android" alt="Download GhostGrid" />
   </a>
 </p>
@@ -87,8 +87,8 @@ Download the latest Android APK directly from GitHub.
 4. Allow installation from this source if Android requests permission.
 5. Complete the installation and launch GhostGrid.
 
-**Direct download link:** [GhostGrid.apk](https://github.com/DDharm007/GhostGrid/raw/refs/heads/main/APK/GhostGrid.apk)  
-**SHA-256 checksum file:** [GhostGrid.apk.sha256](https://github.com/DDharm007/GhostGrid/raw/refs/heads/main/APK/GhostGrid.apk.sha256)
+**Direct download link:** [GhostGrid.apk](https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk)  
+**SHA-256 checksum file:** [GhostGrid.apk.sha256](https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk.sha256)
 
 ---
 
@@ -156,12 +156,12 @@ GhostGrid
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/DDharm007/GhostGrid.git
+git clone https://github.com/DDharm007/ghost-grid-nav.git
 ```
 
 **2. Open the project**
 
-Open the cloned `GhostGrid` directory in Android Studio.
+Open the cloned `ghost-grid-nav` directory in Android Studio.
 
 **3. Sync Gradle**
 
@@ -199,7 +199,7 @@ GhostGrid uses Android permissions strictly for:
 ## Project Structure
 
 ```text
-GhostGrid/
+ghost-grid-nav/
 │
 ├── APK/
 │   ├── GhostGrid.apk

@@ -93,7 +93,7 @@ import java.util.Date
 import java.util.Locale
 
 private const val GHOSTGRID_APK_DIRECT_URL =
-    "https://github.com/DDharm007/GhostGrid/raw/refs/heads/main/APK/GhostGrid.apk"
+    "https://github.com/DDharm007/ghost-grid-nav/raw/refs/heads/main/APK/GhostGrid.apk"
 
 @Composable
 fun SettingsScreen(
