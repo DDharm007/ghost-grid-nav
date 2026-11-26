@@ -1,0 +1,6 @@
+{
+  "name": "GhostGrid",
+  "description": "Offline-first, privacy-hardened Android Maps and Turn-by-Turn Navigation powered by MapLibre, PMTiles, GraphHopper, SQLite FTS5/R-Tree, and SQLCipher.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

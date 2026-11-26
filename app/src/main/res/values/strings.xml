@@ -1,0 +1,77 @@
+<resources>
+    <string name="app_name">GhostGrid</string>
+    <string name="tagline">Zero cloud, zero tracking, pure navigation.</string>
+
+    <!-- Offline Survival Toolkit & Profile -->
+    <string name="toolkit_title">Survival Toolkit</string>
+    <string name="tool_calculator">Calculator</string>
+    <string name="tool_notes">Encrypted Notes</string>
+    <string name="tool_torch_compass">SOS Torch &amp; Compass</string>
+    <string name="tool_emergency">Emergency &amp; Units</string>
+    <string name="profile_title">Local Identity</string>
+    <string name="profile_no_login_badge">No Login Required</string>
+    <string name="cd_toolkit">Open offline survival toolkit</string>
+    <string name="cd_profile">Open local profile and photo settings</string>
+
+    <!-- Privacy & Offline Mode -->
+    <string name="strict_offline_on">Strict Offline</string>
+    <string name="strict_offline_off">Hybrid Online</string>
+    <string name="strict_offline_desc">Blocks all outbound network requests at the transport layer.</string>
+
+    <!-- Search & Categories -->
+    <string name="search_placeholder">Search places, addresses, coordinates…</string>
+    <string name="cat_food">Food Junctions</string>
+    <string name="cat_hospitals">Hospitals &amp; Clinics</string>
+    <string name="cat_pharmacies">Pharmacies</string>
+    <string name="cat_fuel">Fuel</string>
+    <string name="cat_transit">Transit</string>
+    <string name="cat_saved">Saved Places</string>
+
+    <!-- Navigation & Routing -->
+    <string name="action_navigate">Navigate</string>
+    <string name="action_road_blocked">Road Blocked Ahead</string>
+    <string name="action_stop_nav">End Route</string>
+    <string name="action_recenter">Recenter GPS</string>
+    <string name="profile_fastest">Fastest</string>
+    <string name="profile_shortest">Shortest</string>
+    <string name="profile_avoid_unpaved">Avoid Unpaved</string>
+    <string name="recalculating_route">Off-route detected — recalculating offline…</string>
+
+    <!-- Recording & Vault -->
+    <string name="recording_active">Recording Encrypted Track</string>
+    <string name="recording_stopped">Start Track Recording</string>
+    <string name="vault_title">Encrypted Route Vault</string>
+    <string name="vault_biometric_title">Unlock GhostGrid Vault</string>
+    <string name="vault_biometric_subtitle">Authenticate to access encrypted GPS tracks and exports</string>
+    <string name="export_gpx">Export GPX</string>
+    <string name="export_geojson">Export GeoJSON</string>
+
+    <!-- Region Manager -->
+    <string name="regions_title">Offline Region Packs</string>
+    <string name="import_local_zip">Import Local .zip Pack</string>
+    <string name="fetch_manifest">Fetch Release Manifest</string>
+
+    <!-- Legal Attributions (Mandatory ODbL & CDLA-Permissive-2.0) -->
+    <string name="attribution_osm">Map data © OpenStreetMap contributors (ODbL 1.0)</string>
+    <string name="attribution_overture">Buildings, addresses &amp; places © Overture Maps Foundation (CDLA-Permissive-2.0)</string>
+    <string name="attribution_engines">Rendered with MapLibre Native • Routed locally by GraphHopper Core</string>
+
+    <!-- Notification Channel -->
+    <string name="notif_channel_tracking_name">Encrypted Track Recording</string>
+    <string name="notif_channel_tracking_desc">Persistent notification while GhostGrid records offline GPS breadcrumbs.</string>
+    <string name="notif_tracking_title">GhostGrid Track Recording Active</string>
+    <string name="notif_tracking_text">Encrypted SQLCipher GPS breadcrumbs • Zero cloud upload</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_search_icon">Search offline places</string>
+    <string name="cd_clear_search">Clear search query</string>
+    <string name="cd_strict_offline_toggle">Toggle Strict Offline Mode</string>
+    <string name="cd_camera_mode">Cycle GPS camera tracking mode</string>
+    <string name="cd_record_track">Toggle encrypted GPS track recording</string>
+    <string name="cd_region_manager">Open offline region pack manager</string>
+    <string name="cd_route_vault">Open biometric-protected route history vault</string>
+    <string name="cd_saved_lists">Open encrypted saved places lists</string>
+    <string name="cd_settings">Open privacy and hybrid API settings</string>
+    <string name="cd_voice_toggle">Toggle offline turn-by-turn voice guidance</string>
+    <string name="cd_back">Navigate back</string>
+</resources>

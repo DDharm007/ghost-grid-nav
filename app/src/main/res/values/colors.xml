@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ghostgrid_canvas">#09090B</color>
+    <color name="ghostgrid_surface">#121216</color>
+    <color name="ghostgrid_accent">#7C3AED</color>
+</resources>

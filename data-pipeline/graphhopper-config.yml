@@ -1,0 +1,44 @@
+# GhostGrid GraphHopper 11.1 Offline Routing Graph Configuration
+# Pre-compiles surface, smoothness, road_class, and max_speed encoded values
+# so the mobile CustomModel can dynamically penalize bad/unpaved roads and
+# inject live road-block avoidance polygons at runtime (<150ms).
+
+graphhopper:
+  graph.encoded_values: car_access, car_average_speed, foot_access, foot_average_speed, bike_access, bike_average_speed, road_class, road_environment, surface, smoothness, max_speed, toll, track_type, roundabouts
+  prepare.min_network_size: 200
+  routing.non_ch.max_waypoint_distance: 1000000
+
+  profiles:
+    - name: car_fastest
+      custom_model_files: [car.json]
+    - name: car_avoid_unpaved
+      custom_model: {
+        "speed": [
+          { "if": "true", "limit_to": "car_average_speed" },
+          { "if": "surface == UNPAVED || surface == GRAVEL || surface == DIRT || surface == SAND", "multiply_by": "0.35" },
+          { "if": "smoothness == BAD || smoothness == VERY_BAD || smoothness == HORRIBLE", "multiply_by": "0.4" }
+        ],
+        "priority": [
+          { "if": "!car_access", "multiply_by": "0" },
+          { "if": "surface == UNPAVED || surface == GRAVEL || surface == DIRT || surface == MUD", "multiply_by": "0.15" },
+          { "if": "smoothness == VERY_BAD || smoothness == HORRIBLE || smoothness == IMPASSABLE", "multiply_by": "0.1" },
+          { "if": "road_class == TRACK", "multiply_by": "0.2" }
+        ]
+      }
+    - name: car_shortest
+      custom_model: {
+        "distance_influence": 90,
+        "speed": [
+          { "if": "true", "limit_to": "car_average_speed" }
+        ],
+        "priority": [
+          { "if": "!car_access", "multiply_by": "0" }
+        ]
+      }
+
+  # LM (Landmarks) enabled instead of strict CH so dynamic runtime CustomModels
+  # (like 1-tap "Road Blocked Ahead" polygon injection) resolve in <150ms on Android.
+  profiles_lm:
+    - profile: car_fastest
+    - profile: car_avoid_unpaved
+    - profile: car_shortest

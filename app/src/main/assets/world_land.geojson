@@ -1,0 +1,232 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "Equator"},
+      "geometry": {"type": "LineString", "coordinates": [[-180, 0], [180, 0]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "30N"},
+      "geometry": {"type": "LineString", "coordinates": [[-180, 30], [180, 30]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "60N"},
+      "geometry": {"type": "LineString", "coordinates": [[-180, 60], [180, 60]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "30S"},
+      "geometry": {"type": "LineString", "coordinates": [[-180, -30], [180, -30]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "60S"},
+      "geometry": {"type": "LineString", "coordinates": [[-180, -60], [180, -60]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "0E"},
+      "geometry": {"type": "LineString", "coordinates": [[0, -85], [0, 85]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "60E"},
+      "geometry": {"type": "LineString", "coordinates": [[60, -85], [60, 85]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "120E"},
+      "geometry": {"type": "LineString", "coordinates": [[120, -85], [120, 85]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "60W"},
+      "geometry": {"type": "LineString", "coordinates": [[-60, -85], [-60, 85]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "graticule", "name": "120W"},
+      "geometry": {"type": "LineString", "coordinates": [[-120, -85], [-120, 85]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "North America"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-168, 66], [-161, 70], [-140, 70], [-125, 70], [-110, 68], [-95, 68],
+          [-82, 62], [-64, 60], [-56, 52], [-66, 44], [-71, 41], [-76, 35],
+          [-81, 25], [-83, 29], [-90, 29], [-97, 26], [-96, 19], [-88, 21],
+          [-87, 16], [-83, 10], [-78, 8], [-82, 9], [-88, 13], [-94, 15],
+          [-105, 20], [-110, 24], [-114, 31], [-117, 33], [-123, 38], [-125, 48],
+          [-134, 57], [-148, 60], [-162, 55], [-166, 60], [-168, 66]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Greenland"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-44, 60], [-52, 65], [-56, 73], [-68, 78], [-45, 83], [-18, 81],
+          [-20, 72], [-34, 66], [-44, 60]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "South America"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-78, 9], [-72, 12], [-62, 10], [-51, 2], [-35, -6], [-39, -14],
+          [-41, -22], [-48, -26], [-53, -34], [-63, -41], [-67, -50], [-68, -55],
+          [-74, -52], [-73, -42], [-71, -30], [-70, -18], [-81, -5], [-79, 2], [-78, 9]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Europe"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-9, 37], [-9, 43], [-2, 43], [-4, 48], [2, 51], [8, 54], [10, 57],
+          [5, 61], [14, 68], [28, 71], [42, 67], [60, 68], [60, 50], [48, 46],
+          [40, 44], [30, 46], [28, 41], [23, 37], [18, 40], [13, 45], [8, 44],
+          [3, 42], [-5, 36], [-9, 37]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "United Kingdom & Ireland"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-6, 50], [1, 51], [2, 53], [-2, 58], [-6, 58], [-6, 54], [-10, 52], [-6, 50]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Africa"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-17, 15], [-16, 21], [-10, 31], [-5, 36], [10, 37], [15, 32],
+          [25, 32], [32, 31], [38, 22], [43, 12], [51, 11], [45, 2],
+          [40, -6], [40, -15], [35, -24], [28, -33], [18, -34], [14, -22],
+          [12, -12], [9, -2], [9, 4], [2, 6], [-8, 5], [-16, 11], [-17, 15]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Madagascar"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [44, -25], [47, -25], [50, -15], [49, -12], [46, -16], [44, -21], [44, -25]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Asia"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [27, 41], [36, 42], [42, 41], [49, 46], [60, 50], [60, 68],
+          [75, 72], [104, 77], [135, 72], [170, 66], [164, 59], [156, 51],
+          [142, 54], [135, 44], [129, 35], [124, 39], [120, 37], [122, 31],
+          [117, 23], [109, 20], [108, 12], [102, 13], [104, 1], [100, 6],
+          [98, 16], [91, 22], [87, 21], [80, 13], [77, 8], [73, 19],
+          [69, 22], [68, 23], [67, 25], [61, 25], [56, 26], [51, 29],
+          [59, 22], [53, 16], [44, 13], [35, 29], [36, 36], [27, 37], [27, 41]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Japan"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [130, 31], [135, 34], [140, 36], [145, 43], [141, 45], [139, 39], [131, 34], [130, 31]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Maritime Southeast Asia"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [95, 5], [105, -6], [116, -8], [126, -7], [118, 4], [109, 1], [95, 5]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "Australia"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [114, -22], [122, -17], [131, -12], [136, -12], [142, -11],
+          [149, -20], [153, -28], [150, -37], [141, -38], [131, -32],
+          [115, -34], [113, -26], [114, -22]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "continent", "name": "New Zealand"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [167, -46], [172, -43], [178, -37], [174, -35], [170, -41], [167, -46]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "Ahmedabad, Gujarat"},
+      "geometry": {"type": "Point", "coordinates": [72.5714, 23.0225]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "London"},
+      "geometry": {"type": "Point", "coordinates": [-0.1276, 51.5072]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "New York"},
+      "geometry": {"type": "Point", "coordinates": [-74.006, 40.7128]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "Tokyo"},
+      "geometry": {"type": "Point", "coordinates": [139.6917, 35.6895]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "San Francisco"},
+      "geometry": {"type": "Point", "coordinates": [-122.4194, 37.7749]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "Singapore"},
+      "geometry": {"type": "Point", "coordinates": [103.8198, 1.3521]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"kind": "hub", "name": "Sydney"},
+      "geometry": {"type": "Point", "coordinates": [151.2093, -33.8688]}
+    }
+  ]
+}

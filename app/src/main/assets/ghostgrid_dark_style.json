@@ -1,0 +1,14 @@
+{
+  "version": 8,
+  "name": "GhostGrid Pure Offline Monochrome",
+  "sources": {},
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#08080A"
+      }
+    }
+  ]
+}
